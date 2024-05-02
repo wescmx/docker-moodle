@@ -13,7 +13,9 @@ $ docker-compose up -d
 ### Getting started
 
 ```sh
-$ git clone https://github.com/moodle/moodle.git src/.
+$ cd src && rm .gitkeep
+
+$ git clone https://github.com/moodle/moodle.git .
 
 $ git checkout MOODLE_401_STABLE
 ```
