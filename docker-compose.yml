@@ -1,0 +1,99 @@
+networks:
+  moodle:
+
+volumes:
+  mysqldata:
+  redisdata:
+  moodledata:
+
+services:
+  instance:
+    build:
+      context: ./.docker/apache
+      dockerfile: apache.dockerfile
+      args:
+        - PHP_VERSION=${PHP_VERSION}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./src:/var/www/html
+      - moodledata:/mnt/moodledata
+      - ./.docker/php/config/php.ini:/usr/local/etc/php/conf.d/php.ini
+    depends_on:
+      - database
+      - redis
+      - composer
+      - npm
+      - php
+    networks:
+      - moodle
+    container_name: "instance"
+
+  database:
+    image: mariadb:${MARIADB_VERSION}
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - moodle
+    container_name: "database"
+
+  redis:
+    image: redis:${REDIS_VERSION}
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - moodle
+    container_name: "redis"
+
+  composer:
+    image: composer:latest
+    volumes:
+      - ./src:/var/www/html
+    working_dir: /var/www/html
+    entrypoint: ['composer', '--ignore-platform-reqs']
+    networks:
+      - moodle
+    container_name: "composer"
+
+  npm:
+    image: node:latest
+    volumes:
+      - ./src:/var/www/html
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+      - "5173:5173"
+    working_dir: /var/www/html
+    entrypoint: ['npm']
+    networks:
+      - moodle
+    container_name: "npm"
+
+  php:
+    build:
+      context: ./.docker/php
+      dockerfile: php.dockerfile
+      args:
+        - PHP_VERSION=${PHP_VERSION}
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - database
+    working_dir: /var/www/html
+    entrypoint: ['php']
+    networks:
+      - moodle
+    container_name: "php"
